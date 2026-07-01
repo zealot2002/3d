@@ -29,10 +29,7 @@
     .upload-area:hover, .upload-area.dragover { border-color: #4fc3f7; background: rgba(79,195,247,0.1); }
     .upload-area svg { width: 48px; height: 48px; fill: rgba(255,255,255,0.5); margin-bottom: 10px; }
     .upload-area span { color: rgba(255,255,255,0.7); font-size: 0.9rem; }
-    .url-input { width: 300px; padding: 12px; margin-top: 20px; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; background: rgba(255,255,255,0.05); color: #fff; font-size: 0.85rem; outline: none; }
-    .url-input:focus { border-color: #4fc3f7; }
     .btn-close { margin-top: 20px; background: rgba(255,255,255,0.1); color: #fff; }
-    .btn-load-url { margin-top: 10px; background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%); }
     #file-input { display: none; }
     .error { position: fixed; inset: 0; background: #1a0a0a; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; color: #ff4444; text-align: center; padding: 20px; }
     .error.show { display: flex; }
@@ -89,9 +86,6 @@
       <span>拖拽 GLB/GLTF 文件到这里<br>或点击选择文件</span>
     </label>
     <input type="file" id="file-input" accept=".glb,.gltf" />
-    
-    <input type="text" class="url-input" id="url-input" placeholder="或输入模型 URL..." />
-    <button class="btn btn-load-url" onclick="loadModelFromUrl()">从 URL 加载</button>
     
     <button class="btn btn-close" onclick="document.getElementById('upload-box').classList.remove('show')">关闭</button>
   </div>

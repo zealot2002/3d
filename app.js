@@ -116,24 +116,27 @@ function autoCenterCamera(modelObj) {
   controls.update();
 }
 
-function loadModelFromUrl() {
-  const url = document.getElementById('url-input').value.trim();
-  if (!url) return;
-  
-  document.getElementById('upload-box').classList.remove('show');
-  document.getElementById('loading').style.display = 'flex';
-  document.getElementById('error').classList.remove('show');
-  
-  loadModel(url);
-}
-
 function clearModel() {
   if (model) {
+    model.traverse(function(child) {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach(function(m) { m.dispose(); });
+        } else {
+          child.material.dispose();
+        }
+      }
+    });
     scene.remove(model);
     model = null;
   }
-  mixer = null;
+  if (mixer) {
+    mixer.stopAllAction();
+    mixer = null;
+  }
   actions = {};
+  removeAnimationSelector();
 }
 
 function setupAnimations(gltf) {
@@ -165,16 +168,22 @@ function setupAnimations(gltf) {
   return animCount;
 }
 
-function createAnimationSelector() {
-  let selector = document.getElementById('animation-selector');
-  if (!selector) {
-    selector = document.createElement('div');
-    selector.id = 'animation-selector';
-    selector.style.marginTop = '10px';
-    selector.style.borderTop = '1px solid rgba(255,255,255,0.1)';
-    selector.style.paddingTop = '10px';
-    document.querySelector('.controls').appendChild(selector);
+function removeAnimationSelector() {
+  const selector = document.getElementById('animation-selector');
+  if (selector) {
+    selector.remove();
   }
+}
+
+function createAnimationSelector() {
+  removeAnimationSelector();
+  
+  const selector = document.createElement('div');
+  selector.id = 'animation-selector';
+  selector.style.marginTop = '10px';
+  selector.style.borderTop = '1px solid rgba(255,255,255,0.1)';
+  selector.style.paddingTop = '10px';
+  document.querySelector('.controls').appendChild(selector);
   
   selector.innerHTML = '';
   
@@ -283,6 +292,7 @@ function handleFileUpload(event) {
     
     loader.parse(arrayBuffer, '', function(gltf) {
       try {
+        clearModel();
         model = gltf.scene;
         
         model.traverse(function(child) {
