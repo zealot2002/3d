@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D 模型查看器 - 自定义加载</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0a0f; overflow: hidden; }
+    #canvas-container { width: 100vw; height: 100vh; }
+    .ui-overlay { position: fixed; top: 20px; left: 20px; z-index: 100; color: #fff; pointer-events: none; }
+    .ui-overlay h1 { font-size: 1.5rem; font-weight: 700; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+    .ui-overlay p { font-size: 0.8rem; color: rgba(255,255,255,0.6); margin-top: 5px; }
+    .controls { position: fixed; top: 20px; right: 20px; z-index: 100; pointer-events: auto; background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); border-radius: 12px; padding: 15px; min-width: 200px; }
+    .btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.1); }
+    .btn:hover { background: rgba(255,255,255,0.2); }
+    .btn.active { background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%); border-color: transparent; }
+    .btn-upload { background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%); }
+    .btn-upload:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(102,187,106,0.4); }
+    .info { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; color: rgba(255,255,255,0.5); font-size: 0.8rem; text-align: center; pointer-events: none; }
+    .info span { display: block; margin-top: 3px; }
+    #loading { position: fixed; inset: 0; background: #0a0a0f; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; }
+    .loader { width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.1); border-top-color: #4fc3f7; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading p { color: rgba(255,255,255,0.6); margin-top: 20px; font-size: 0.9rem; }
+    .upload-box { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 300; }
+    .upload-box.show { display: flex; }
+    .upload-area { width: 300px; height: 200px; border: 2px dashed rgba(255,255,255,0.3); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s ease; }
+    .upload-area:hover, .upload-area.dragover { border-color: #4fc3f7; background: rgba(79,195,247,0.1); }
+    .upload-area svg { width: 48px; height: 48px; fill: rgba(255,255,255,0.5); margin-bottom: 10px; }
+    .upload-area span { color: rgba(255,255,255,0.7); font-size: 0.9rem; }
+    .url-input { width: 300px; padding: 12px; margin-top: 20px; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; background: rgba(255,255,255,0.05); color: #fff; font-size: 0.85rem; outline: none; }
+    .url-input:focus { border-color: #4fc3f7; }
+    .btn-close { margin-top: 20px; background: rgba(255,255,255,0.1); color: #fff; }
+    .btn-load-url { margin-top: 10px; background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%); }
+    #file-input { display: none; }
+    .error { position: fixed; inset: 0; background: #1a0a0a; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; color: #ff4444; text-align: center; padding: 20px; }
+    .error.show { display: flex; }
+    .error h2 { font-size: 1.5rem; margin-bottom: 10px; }
+    .error p { color: rgba(255,255,255,0.6); margin-bottom: 20px; }
+    .error a { color: #4fc3f7; }
+    .model-info { position: fixed; bottom: 20px; right: 20px; z-index: 100; color: rgba(255,255,255,0.5); font-size: 0.75rem; text-align: right; pointer-events: none; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="loading">
+    <div class="loader"></div>
+    <p>正在加载演示模型...</p>
+  </div>
+
+  <div id="error" class="error">
+    <h2>❌ 加载失败</h2>
+    <p id="error-msg">请尝试上传本地模型文件</p>
+    <button class="btn btn-close" onclick="document.getElementById('error').classList.remove('show'); document.getElementById('upload-box').classList.add('show')">上传模型</button>
+  </div>
+
+  <div id="canvas-container"></div>
+
+  <div class="ui-overlay">
+    <h1>🎨 3D 模型查看器</h1>
+    <p>上传 GLB/GLTF 模型 · Three.js 原生渲染</p>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-upload" onclick="document.getElementById('upload-box').classList.add('show')">📁 上传模型</button>
+    <button class="btn active" data-action="autoRotate">自动旋转</button>
+    <button class="btn" data-action="reset">重置视角</button>
+    <button class="btn" data-action="wireframe">线框模式</button>
+    <button class="btn" data-action="play">播放动画</button>
+  </div>
+
+  <div class="info">
+    <span>🖱️ 拖拽旋转 · 滚轮缩放 · 右键平移</span>
+  </div>
+
+  <div class="model-info" id="model-info"></div>
+
+  <div class="upload-box" id="upload-box">
+    <label class="upload-area" for="file-input">
+      <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+      <span>拖拽 GLB/GLTF 文件到这里<br>或点击选择文件</span>
+    </label>
+    <input type="file" id="file-input" accept=".glb,.gltf" />
+    
+    <input type="text" class="url-input" id="url-input" placeholder="或输入模型 URL..." />
+    <button class="btn btn-load-url" onclick="loadModelFromUrl()">从 URL 加载</button>
+    
+    <button class="btn btn-close" onclick="document.getElementById('upload-box').classList.remove('show')">关闭</button>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
