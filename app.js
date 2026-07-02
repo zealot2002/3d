@@ -4,9 +4,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
 let scene, camera, renderer, controls;
-let model = null;
-let mixer = null;
+let sceneModel = null;
+let characterModel = null;
+let mixers = [];
 let clock = new THREE.Clock();
+let loadedCount = 0;
 
 function showError(message) {
   document.getElementById('loading').style.display = 'none';
@@ -19,10 +21,13 @@ function hideLoading() {
   if (loading) loading.style.display = 'none';
 }
 
-function updateModelInfo(name) {
+function updateModelInfo() {
   const infoEl = document.getElementById('model-info');
   if (infoEl) {
-    infoEl.innerHTML = `模型: ${name || '未知'}`;
+    let info = '';
+    if (sceneModel) info += '场景已加载 ';
+    if (characterModel) info += '人物已加载';
+    infoEl.innerHTML = info || '未加载模型';
   }
 }
 
@@ -86,10 +91,17 @@ function initGround() {
   scene.add(gridHelper);
 }
 
-function autoCenterCamera(modelObj) {
-  const box = new THREE.Box3().setFromObject(modelObj);
+function autoCenterCamera() {
+  const box = new THREE.Box3();
+  
+  if (sceneModel) box.expandByObject(sceneModel);
+  if (characterModel) box.expandByObject(characterModel);
+  
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3());
+  
+  console.log('联合包围盒中心:', center.x, center.y, center.z);
+  console.log('联合包围盒尺寸:', size.x, size.y, size.z);
   
   controls.target.copy(center);
   
@@ -99,37 +111,31 @@ function autoCenterCamera(modelObj) {
   const direction = new THREE.Vector3(1, 0.5, 1).normalize();
   camera.position.copy(center).add(direction.multiplyScalar(distance));
   
+  console.log('相机位置:', camera.position.x, camera.position.y, camera.position.z);
+  
   camera.lookAt(center);
   controls.update();
 }
 
-function clearModel() {
-  if (model) {
-    model.traverse(function(child) {
-      if (child.geometry) child.geometry.dispose();
-      if (child.material) {
-        if (Array.isArray(child.material)) {
-          child.material.forEach(function(m) { m.dispose(); });
-        } else {
-          child.material.dispose();
-        }
-      }
-    });
-    scene.remove(model);
-    model = null;
-  }
-  if (mixer) {
-    mixer.stopAllAction();
-    mixer = null;
+function onModelLoaded() {
+  loadedCount++;
+  console.log('已加载模型数量:', loadedCount);
+  autoCenterCamera();
+  
+  if (loadedCount >= 2) {
+    hideLoading();
+  } else if (loadedCount === 1) {
+    console.log('等待第二个模型加载...');
   }
 }
 
-function setupAnimations(gltf) {
+function setupAnimations(gltf, modelObj) {
   if (gltf.animations && gltf.animations.length > 0) {
-    mixer = new THREE.AnimationMixer(model);
+    const animMixer = new THREE.AnimationMixer(modelObj);
+    mixers.push(animMixer);
     
     gltf.animations.forEach(function(clip) {
-      const action = mixer.clipAction(clip);
+      const action = animMixer.clipAction(clip);
       action.setLoop(THREE.LoopRepeat, Infinity);
       action.play();
     });
@@ -139,14 +145,93 @@ function setupAnimations(gltf) {
 function setupFBXAnimations(modelObj) {
   modelObj.traverse(function(child) {
     if (child.animations && child.animations.length > 0) {
-      if (!mixer) mixer = new THREE.AnimationMixer(modelObj);
+      let animMixer = mixers.find(function(m) { return m._root === modelObj; });
+      if (!animMixer) {
+        animMixer = new THREE.AnimationMixer(modelObj);
+        mixers.push(animMixer);
+      }
       
       child.animations.forEach(function(clip) {
-        const action = mixer.clipAction(clip);
+        const action = animMixer.clipAction(clip);
         action.setLoop(THREE.LoopRepeat, Infinity);
         action.play();
       });
     }
+  });
+}
+
+function loadScene() {
+  console.log('开始加载场景模型...');
+  const loader = new GLTFLoader();
+  loader.load('models/fairy_yard.glb', function(gltf) {
+    console.log('场景模型加载成功');
+    sceneModel = gltf.scene;
+    
+    const box = new THREE.Box3().setFromObject(sceneModel);
+    const size = box.getSize(new THREE.Vector3());
+    console.log('场景模型尺寸:', size.x, size.y, size.z);
+    
+    sceneModel.traverse(function(child) {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    
+    scene.add(sceneModel);
+    setupAnimations(gltf, sceneModel);
+    updateModelInfo();
+    onModelLoaded();
+  }, function(xhr) {
+    console.log('场景加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
+  }, function(error) {
+    console.error('场景加载失败:', error);
+    showError('场景加载失败: ' + error.message);
+    onModelLoaded();
+  });
+}
+
+function loadCharacter() {
+  console.log('开始加载人物模型...');
+  const loader = new FBXLoader();
+  loader.load('models/pp1.fbx', function(object) {
+    console.log('人物模型加载成功');
+    characterModel = object;
+    
+    const box = new THREE.Box3().setFromObject(characterModel);
+    const size = box.getSize(new THREE.Vector3());
+    console.log('人物模型尺寸:', size.x, size.y, size.z);
+    
+    const targetHeight = 2;
+    const scale = targetHeight / size.y;
+    console.log('缩放比例:', scale);
+    characterModel.scale.set(scale, scale, scale);
+    
+    const newBox = new THREE.Box3().setFromObject(characterModel);
+    const newSize = newBox.getSize(new THREE.Vector3());
+    const newCenter = newBox.getCenter(new THREE.Vector3());
+    characterModel.position.y = 0;
+    characterModel.position.x = -2;
+    characterModel.position.z = -1;
+    console.log('人物位置:', characterModel.position.x, characterModel.position.y, characterModel.position.z);
+    
+    characterModel.traverse(function(child) {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    
+    scene.add(characterModel);
+    setupFBXAnimations(characterModel);
+    updateModelInfo();
+    onModelLoaded();
+  }, function(xhr) {
+    console.log('人物加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
+  }, function(error) {
+    console.error('人物加载失败:', error);
+    showError('人物加载失败: ' + error.message);
+    onModelLoaded();
   });
 }
 
@@ -167,20 +252,24 @@ function handleFileUpload(event) {
       const loader = new FBXLoader();
       try {
         const object = loader.parse(arrayBuffer);
-        clearModel();
-        model = object;
         
-        model.traverse(function(child) {
+        object.traverse(function(child) {
           if (child.isMesh) {
             child.castShadow = true;
             child.receiveShadow = true;
           }
         });
         
-        scene.add(model);
-        autoCenterCamera(model);
-        setupFBXAnimations(model);
-        updateModelInfo(file.name);
+        if (characterModel) {
+          scene.remove(characterModel);
+          characterModel = null;
+        }
+        characterModel = object;
+        
+        scene.add(characterModel);
+        setupFBXAnimations(characterModel);
+        autoCenterCamera();
+        updateModelInfo();
         
         hideLoading();
       } catch (e) {
@@ -190,20 +279,25 @@ function handleFileUpload(event) {
       const loader = new GLTFLoader();
       loader.parse(arrayBuffer, '', function(gltf) {
         try {
-          clearModel();
-          model = gltf.scene;
+          const modelObj = gltf.scene;
           
-          model.traverse(function(child) {
+          modelObj.traverse(function(child) {
             if (child.isMesh) {
               child.castShadow = true;
               child.receiveShadow = true;
             }
           });
           
-          scene.add(model);
-          autoCenterCamera(model);
-          setupAnimations(gltf);
-          updateModelInfo(file.name);
+          if (sceneModel) {
+            scene.remove(sceneModel);
+            sceneModel = null;
+          }
+          sceneModel = modelObj;
+          
+          scene.add(sceneModel);
+          setupAnimations(gltf, sceneModel);
+          autoCenterCamera();
+          updateModelInfo();
           
           hideLoading();
         } catch (e) {
@@ -223,9 +317,7 @@ function handleFileUpload(event) {
 }
 
 function resetCamera() {
-  if (model) {
-    autoCenterCamera(model);
-  }
+  autoCenterCamera();
 }
 
 function initUI() {
@@ -263,17 +355,26 @@ function renderLoop() {
   const delta = clock.getDelta();
 
   controls.update();
-  if (mixer) mixer.update(delta);
+  mixers.forEach(function(m) { m.update(delta); });
   renderer.render(scene, camera);
 }
 
 function init() {
+  console.log('开始初始化...');
   initScene();
+  console.log('场景初始化完成');
   initLights();
+  console.log('灯光初始化完成');
   initGround();
+  console.log('地面初始化完成');
   initUI();
-  hideLoading();
+  console.log('UI 初始化完成');
   renderLoop();
+  console.log('渲染循环启动');
+  loadScene();
+  console.log('开始加载场景模型');
+  loadCharacter();
+  console.log('开始加载人物模型');
 }
 
 init();
