@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D 模型查看器 - 自定义加载</title>
+  <title>3D 模型查看器</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0a0f; overflow: hidden; }
@@ -11,10 +11,9 @@
     .ui-overlay { position: fixed; top: 20px; left: 20px; z-index: 100; color: #fff; pointer-events: none; }
     .ui-overlay h1 { font-size: 1.5rem; font-weight: 700; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
     .ui-overlay p { font-size: 0.8rem; color: rgba(255,255,255,0.6); margin-top: 5px; }
-    .controls { position: fixed; top: 20px; right: 20px; z-index: 100; pointer-events: auto; background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); border-radius: 12px; padding: 15px; min-width: 200px; }
+    .controls { position: fixed; top: 20px; right: 20px; z-index: 100; pointer-events: auto; background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); border-radius: 12px; padding: 15px; }
     .btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.1); }
     .btn:hover { background: rgba(255,255,255,0.2); }
-    .btn.active { background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%); border-color: transparent; }
     .btn-upload { background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%); }
     .btn-upload:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(102,187,106,0.4); }
     .info { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; color: rgba(255,255,255,0.5); font-size: 0.8rem; text-align: center; pointer-events: none; }
@@ -35,7 +34,6 @@
     .error.show { display: flex; }
     .error h2 { font-size: 1.5rem; margin-bottom: 10px; }
     .error p { color: rgba(255,255,255,0.6); margin-bottom: 20px; }
-    .error a { color: #4fc3f7; }
     .model-info { position: fixed; bottom: 20px; right: 20px; z-index: 100; color: rgba(255,255,255,0.5); font-size: 0.75rem; text-align: right; pointer-events: none; }
   </style>
   <script type="importmap">
@@ -50,7 +48,7 @@
 <body>
   <div id="loading">
     <div class="loader"></div>
-    <p>正在加载演示模型...</p>
+    <p>准备就绪...</p>
   </div>
 
   <div id="error" class="error">
@@ -63,15 +61,12 @@
 
   <div class="ui-overlay">
     <h1>🎨 3D 模型查看器</h1>
-    <p>上传 GLB/GLTF 模型 · Three.js 原生渲染</p>
+    <p>上传 GLB/GLTF/FBX 模型 · Three.js 原生渲染</p>
   </div>
 
   <div class="controls">
     <button class="btn btn-upload" onclick="document.getElementById('upload-box').classList.add('show')">📁 上传模型</button>
-    <button class="btn active" data-action="autoRotate">自动旋转</button>
     <button class="btn" data-action="reset">重置视角</button>
-    <button class="btn" data-action="wireframe">线框模式</button>
-    <button class="btn" data-action="play">播放动画</button>
   </div>
 
   <div class="info">
@@ -83,9 +78,9 @@
   <div class="upload-box" id="upload-box">
     <label class="upload-area" for="file-input">
       <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
-      <span>拖拽 GLB/GLTF 文件到这里<br>或点击选择文件</span>
+      <span>拖拽 GLB/GLTF/FBX 文件到这里<br>或点击选择文件</span>
     </label>
-    <input type="file" id="file-input" accept=".glb,.gltf" />
+    <input type="file" id="file-input" accept=".glb,.gltf,.fbx" />
     
     <button class="btn btn-close" onclick="document.getElementById('upload-box').classList.remove('show')">关闭</button>
   </div>
