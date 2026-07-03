@@ -212,7 +212,9 @@ function loadScene() {
 function loadCharacter() {
   console.log('开始加载人物模型...');
   const loader = new FBXLoader();
-  loader.load(CONFIG.model.characterPath, function(object) {
+  const loadPath = CONFIG.model.characterUrl || CONFIG.model.characterPath;
+  console.log('人物模型加载路径:', loadPath);
+  loader.load(loadPath, function(object) {
     console.log('人物模型加载成功');
     characterModel = object;
     
