@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { CONFIG } from './config.js';
 
 let scene, camera, renderer, controls;
 let sceneModel = null;
@@ -36,12 +37,12 @@ function initScene() {
   const w = window.innerWidth, h = window.innerHeight;
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a1a2e);
+  scene.background = new THREE.Color(CONFIG.rendering.background);
 
-  camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 1000);
-  camera.position.set(5, 3, 5);
+  camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, w / h, CONFIG.camera.near, CONFIG.camera.far);
+  camera.position.set(CONFIG.camera.initialPosition.x, CONFIG.camera.initialPosition.y, CONFIG.camera.initialPosition.z);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer = new THREE.WebGLRenderer({ antialias: CONFIG.rendering.antialias });
   renderer.setSize(w, h);
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.shadowMap.enabled = true;
@@ -51,42 +52,42 @@ function initScene() {
 
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
-  controls.minDistance = 1;
-  controls.maxDistance = 500;
+  controls.dampingFactor = CONFIG.camera.dampingFactor;
+  controls.minDistance = CONFIG.camera.minDistance;
+  controls.maxDistance = CONFIG.camera.maxDistance;
 
   window.addEventListener('resize', onResize);
 }
 
 function initLights() {
-  const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+  const ambient = new THREE.AmbientLight(CONFIG.lighting.ambientColor, CONFIG.lighting.ambientIntensity);
   scene.add(ambient);
 
-  const sun = new THREE.DirectionalLight(0xfff5e6, 1.5);
-  sun.position.set(10, 15, 10);
+  const sun = new THREE.DirectionalLight(CONFIG.lighting.sunColor, CONFIG.lighting.sunIntensity);
+  sun.position.set(CONFIG.lighting.sunPosition.x, CONFIG.lighting.sunPosition.y, CONFIG.lighting.sunPosition.z);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(CONFIG.rendering.shadowMapSize, CONFIG.rendering.shadowMapSize);
   scene.add(sun);
 
-  const fill = new THREE.DirectionalLight(0xcce5ff, 0.5);
-  fill.position.set(-10, 8, -10);
+  const fill = new THREE.DirectionalLight(CONFIG.lighting.fillColor, CONFIG.lighting.fillIntensity);
+  fill.position.set(CONFIG.lighting.fillPosition.x, CONFIG.lighting.fillPosition.y, CONFIG.lighting.fillPosition.z);
   scene.add(fill);
 
-  const rim = new THREE.DirectionalLight(0x88ccff, 0.3);
-  rim.position.set(0, 5, 15);
+  const rim = new THREE.DirectionalLight(CONFIG.lighting.rimColor, CONFIG.lighting.rimIntensity);
+  rim.position.set(CONFIG.lighting.rimPosition.x, CONFIG.lighting.rimPosition.y, CONFIG.lighting.rimPosition.z);
   scene.add(rim);
 }
 
 function initGround() {
-  const groundGeo = new THREE.CircleGeometry(30, 64);
-  const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.9 });
+  const groundGeo = new THREE.CircleGeometry(CONFIG.ground.radius, 64);
+  const groundMat = new THREE.MeshStandardMaterial({ color: CONFIG.ground.color, roughness: CONFIG.ground.roughness });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.01;
   ground.receiveShadow = true;
   scene.add(ground);
 
-  const gridHelper = new THREE.GridHelper(60, 60, 0x2a2a4a, 0x1a1a2a);
+  const gridHelper = new THREE.GridHelper(CONFIG.ground.gridSize, CONFIG.ground.gridDivisions, 0x2a2a4a, 0x1a1a2a);
   gridHelper.position.y = 0;
   scene.add(gridHelper);
 }
@@ -106,9 +107,13 @@ function autoCenterCamera() {
   controls.target.copy(center);
   
   const maxDim = Math.max(size.x, size.y, size.z);
-  const distance = maxDim * 8;
+  const distance = maxDim * CONFIG.camera.autoCenterScale;
   
-  const direction = new THREE.Vector3(1, 0.5, 1).normalize();
+  const direction = new THREE.Vector3(
+    CONFIG.camera.autoCenterDirection.x,
+    CONFIG.camera.autoCenterDirection.y,
+    CONFIG.camera.autoCenterDirection.z
+  ).normalize();
   camera.position.copy(center).add(direction.multiplyScalar(distance));
   
   console.log('相机位置:', camera.position.x, camera.position.y, camera.position.z);
@@ -136,7 +141,8 @@ function setupAnimations(gltf, modelObj) {
     
     gltf.animations.forEach(function(clip) {
       const action = animMixer.clipAction(clip);
-      action.setLoop(THREE.LoopRepeat, Infinity);
+      action.setLoop(CONFIG.animation.loopMode, Infinity);
+      action.timeScale = CONFIG.animation.speed;
       action.play();
     });
   }
@@ -153,7 +159,8 @@ function setupFBXAnimations(modelObj) {
       
       child.animations.forEach(function(clip) {
         const action = animMixer.clipAction(clip);
-        action.setLoop(THREE.LoopRepeat, Infinity);
+        action.setLoop(CONFIG.animation.loopMode, Infinity);
+        action.timeScale = CONFIG.animation.speed;
         action.play();
       });
     }
@@ -163,7 +170,7 @@ function setupFBXAnimations(modelObj) {
 function loadScene() {
   console.log('开始加载场景模型...');
   const loader = new GLTFLoader();
-  loader.load('models/fairy_yard.glb', function(gltf) {
+  loader.load(CONFIG.model.scenePath, function(gltf) {
     console.log('场景模型加载成功');
     sceneModel = gltf.scene;
     
@@ -194,7 +201,7 @@ function loadScene() {
 function loadCharacter() {
   console.log('开始加载人物模型...');
   const loader = new FBXLoader();
-  loader.load('models/pp1.fbx', function(object) {
+  loader.load(CONFIG.model.characterPath, function(object) {
     console.log('人物模型加载成功');
     characterModel = object;
     
@@ -202,7 +209,7 @@ function loadCharacter() {
     const size = box.getSize(new THREE.Vector3());
     console.log('人物模型尺寸:', size.x, size.y, size.z);
     
-    const targetHeight = 2;
+    const targetHeight = CONFIG.model.characterTargetHeight;
     const scale = targetHeight / size.y;
     console.log('缩放比例:', scale);
     characterModel.scale.set(scale, scale, scale);
@@ -210,9 +217,10 @@ function loadCharacter() {
     const newBox = new THREE.Box3().setFromObject(characterModel);
     const newSize = newBox.getSize(new THREE.Vector3());
     const newCenter = newBox.getCenter(new THREE.Vector3());
-    characterModel.position.y = 0;
-    characterModel.position.x = -2;
-    characterModel.position.z = -1;
+    
+    characterModel.position.y = CONFIG.model.characterPosition.y;
+    characterModel.position.x = CONFIG.model.characterPosition.x;
+    characterModel.position.z = CONFIG.model.characterPosition.z;
     console.log('人物位置:', characterModel.position.x, characterModel.position.y, characterModel.position.z);
     
     characterModel.traverse(function(child) {
