@@ -31,7 +31,7 @@ export const CONFIG = {
   model: {
     scenePath: 'models/fairy_yard.glb',  // 场景模型文件路径
     characterPath: 'models/pp1.fbx',     // 人物模型文件路径（本地开发）
-    characterUrl: '',                    // 人物模型外部URL（部署时使用，如R2链接）
+    characterUrl: 'https://raw.githubusercontent.com/zealot2002/3d/main/models/pp1.fbx',  // 人物模型外部URL（部署时使用GitHub Raw）
     characterTargetHeight: 2,            // 人物缩放后的目标高度（单位：米）
     characterPosition: { x: -2, y: 0, z: -1 },  // 人物在场景中的位置偏移
     
