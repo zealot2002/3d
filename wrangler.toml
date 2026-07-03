@@ -1,0 +1,6 @@
+name = "3d-model-viewer"
+compatibility_date = "2026-07-03"
+
+[pages]
+project_name = "3d-model-viewer"
+pages_build_output_dir = "."
