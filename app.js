@@ -2,11 +2,16 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
-import { CONFIG } from './config.js';
+import { CONFIG } from './config.js?v=5';
 
 let scene, camera, renderer, controls;
 let sceneModel = null;
 let characterModel = null;
+let cakeModel = null;
+let carModel = null;
+let catModel = null;
+let porscheModel = null;
+let helicopterModel = null;
 let mixers = [];
 let clock = new THREE.Clock();
 let loadedCount = 0;
@@ -27,7 +32,8 @@ function updateModelInfo() {
   if (infoEl) {
     let info = '';
     if (sceneModel) info += '场景已加载 ';
-    if (characterModel) info += '人物已加载';
+    if (characterModel) info += '人物已加载 ';
+    if (cakeModel) info += '蛋糕已加载';
     infoEl.innerHTML = info || '未加载模型';
   }
 }
@@ -97,6 +103,11 @@ function autoCenterCamera() {
   
   if (sceneModel) box.expandByObject(sceneModel);
   if (characterModel) box.expandByObject(characterModel);
+  if (cakeModel) box.expandByObject(cakeModel);
+  if (carModel) box.expandByObject(carModel);
+  if (catModel) box.expandByObject(catModel);
+  if (porscheModel) box.expandByObject(porscheModel);
+  if (helicopterModel) box.expandByObject(helicopterModel);
   
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3());
@@ -127,10 +138,10 @@ function onModelLoaded() {
   console.log('已加载模型数量:', loadedCount);
   autoCenterCamera();
   
-  if (loadedCount >= 2) {
+  if (loadedCount >= 7) {
     hideLoading();
-  } else if (loadedCount === 1) {
-    console.log('等待第二个模型加载...');
+  } else {
+    console.log('等待其他模型加载...');
   }
 }
 
@@ -239,6 +250,298 @@ function loadCharacter() {
   }, function(error) {
     console.error('人物加载失败:', error);
     showError('人物加载失败: ' + error.message);
+    onModelLoaded();
+  });
+}
+
+function loadCake() {
+  console.log('========== 蛋糕加载开始 ==========');
+  console.log('蛋糕配置路径:', CONFIG.model.cakePath);
+  console.log('蛋糕配置缩放:', CONFIG.model.cakeScale);
+  console.log('蛋糕配置位置:', CONFIG.model.cakePosition);
+  
+  const loader = new GLTFLoader();
+  loader.load(CONFIG.model.cakePath, function(gltf) {
+    console.log('========== 蛋糕加载成功 ==========');
+    cakeModel = gltf.scene;
+    
+    console.log('gltf对象结构:', Object.keys(gltf));
+    console.log('scene子对象数量:', cakeModel.children.length);
+    
+    cakeModel.traverse(function(child, index) {
+      console.log('蛋糕子对象[' + index + ']:', child.name, '类型:', child.type, '可见:', child.visible);
+    });
+    
+    const box = new THREE.Box3().setFromObject(cakeModel);
+    const size = box.getSize(new THREE.Vector3());
+    console.log('蛋糕模型原始尺寸:', size.x, size.y, size.z);
+    console.log('蛋糕模型边界中心:', box.getCenter(new THREE.Vector3()));
+    
+    const scale = CONFIG.model.cakeScale;
+    console.log('应用缩放比例:', scale);
+    cakeModel.scale.set(scale, scale, scale);
+    
+    const scaledBox = new THREE.Box3().setFromObject(cakeModel);
+    const scaledSize = scaledBox.getSize(new THREE.Vector3());
+    console.log('缩放后尺寸:', scaledSize.x, scaledSize.y, scaledSize.z);
+    
+    cakeModel.position.x = CONFIG.model.cakePosition.x;
+    cakeModel.position.y = CONFIG.model.cakePosition.y;
+    cakeModel.position.z = CONFIG.model.cakePosition.z;
+    console.log('蛋糕位置:', cakeModel.position.x, cakeModel.position.y, cakeModel.position.z);
+    
+    cakeModel.traverse(function(child) {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        console.log('设置阴影:', child.name);
+      }
+    });
+    
+    console.log('添加到场景前，场景子对象数量:', scene.children.length);
+    scene.add(cakeModel);
+    console.log('添加到场景后，场景子对象数量:', scene.children.length);
+    
+    setupAnimations(gltf, cakeModel);
+    updateModelInfo();
+    onModelLoaded();
+    
+    console.log('========== 蛋糕加载完成 ==========');
+  }, function(xhr) {
+    console.log('蛋糕加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
+  }, function(error) {
+    console.error('========== 蛋糕加载失败 ==========');
+    console.error('错误详情:', error);
+    console.error('错误信息:', error.message);
+    showError('蛋糕加载失败: ' + error.message);
+    onModelLoaded();
+  });
+}
+
+function loadCar() {
+  console.log('========== 跑车加载开始 ==========');
+  console.log('跑车配置路径:', CONFIG.model.carPath);
+  console.log('跑车配置缩放:', CONFIG.model.carScale);
+  console.log('跑车配置位置:', CONFIG.model.carPosition);
+  
+  const loader = new GLTFLoader();
+  loader.load(CONFIG.model.carPath, function(gltf) {
+    console.log('========== 跑车加载成功 ==========');
+    carModel = gltf.scene;
+    
+    console.log('scene子对象数量:', carModel.children.length);
+    
+    carModel.traverse(function(child, index) {
+      console.log('跑车子对象[' + index + ']:', child.name, '类型:', child.type, '可见:', child.visible);
+    });
+    
+    const box = new THREE.Box3().setFromObject(carModel);
+    const size = box.getSize(new THREE.Vector3());
+    console.log('跑车模型原始尺寸:', size.x, size.y, size.z);
+    
+    const scale = CONFIG.model.carScale;
+    console.log('应用缩放比例:', scale);
+    carModel.scale.set(scale, scale, scale);
+    
+    const scaledBox = new THREE.Box3().setFromObject(carModel);
+    const scaledSize = scaledBox.getSize(new THREE.Vector3());
+    console.log('缩放后尺寸:', scaledSize.x, scaledSize.y, scaledSize.z);
+    
+    carModel.position.x = CONFIG.model.carPosition.x;
+    carModel.position.y = CONFIG.model.carPosition.y;
+    carModel.position.z = CONFIG.model.carPosition.z;
+    console.log('跑车位置:', carModel.position.x, carModel.position.y, carModel.position.z);
+    
+    carModel.traverse(function(child) {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    
+    scene.add(carModel);
+    setupAnimations(gltf, carModel);
+    updateModelInfo();
+    onModelLoaded();
+    
+    console.log('========== 跑车加载完成 ==========');
+  }, function(xhr) {
+    console.log('跑车加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
+  }, function(error) {
+    console.error('========== 跑车加载失败 ==========');
+    console.error('错误详情:', error);
+    console.error('错误信息:', error.message);
+    showError('跑车加载失败: ' + error.message);
+    onModelLoaded();
+  });
+}
+
+function loadCat() {
+  console.log('========== 猫咪加载开始 ==========');
+  console.log('猫咪配置路径:', CONFIG.model.catPath);
+  console.log('猫咪配置缩放:', CONFIG.model.catScale);
+  console.log('猫咪配置位置:', CONFIG.model.catPosition);
+  console.log('猫咪配置旋转:', CONFIG.model.catRotation);
+  
+  const loader = new GLTFLoader();
+  loader.load(CONFIG.model.catPath, function(gltf) {
+    console.log('========== 猫咪加载成功 ==========');
+    catModel = gltf.scene;
+    
+    console.log('scene子对象数量:', catModel.children.length);
+    
+    catModel.traverse(function(child, index) {
+      console.log('猫咪子对象[' + index + ']:', child.name, '类型:', child.type, '可见:', child.visible);
+    });
+    
+    const box = new THREE.Box3().setFromObject(catModel);
+    const size = box.getSize(new THREE.Vector3());
+    console.log('猫咪模型原始尺寸:', size.x, size.y, size.z);
+    
+    const scale = CONFIG.model.catScale;
+    console.log('应用缩放比例:', scale);
+    catModel.scale.set(scale, scale, scale);
+    
+    const scaledBox = new THREE.Box3().setFromObject(catModel);
+    const scaledSize = scaledBox.getSize(new THREE.Vector3());
+    console.log('缩放后尺寸:', scaledSize.x, scaledSize.y, scaledSize.z);
+    
+    catModel.position.x = CONFIG.model.catPosition.x;
+    catModel.position.y = CONFIG.model.catPosition.y;
+    catModel.position.z = CONFIG.model.catPosition.z;
+    console.log('猫咪位置:', catModel.position.x, catModel.position.y, catModel.position.z);
+    
+    catModel.rotation.x = CONFIG.model.catRotation.x;
+    catModel.rotation.y = CONFIG.model.catRotation.y;
+    catModel.rotation.z = CONFIG.model.catRotation.z;
+    console.log('猫咪旋转:', catModel.rotation.x, catModel.rotation.y, catModel.rotation.z);
+    
+    catModel.traverse(function(child) {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    
+    scene.add(catModel);
+    setupAnimations(gltf, catModel);
+    updateModelInfo();
+    onModelLoaded();
+    
+    console.log('========== 猫咪加载完成 ==========');
+  }, function(xhr) {
+    console.log('猫咪加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
+  }, function(error) {
+    console.error('========== 猫咪加载失败 ==========');
+    console.error('错误详情:', error);
+    console.error('错误信息:', error.message);
+    showError('猫咪加载失败: ' + error.message);
+    onModelLoaded();
+  });
+}
+
+function loadPorsche() {
+  console.log('========== 保时捷911加载开始 ==========');
+  console.log('保时捷配置路径:', CONFIG.model.porschePath);
+  console.log('保时捷配置缩放:', CONFIG.model.porscheScale);
+  console.log('保时捷配置位置:', CONFIG.model.porschePosition);
+  console.log('保时捷配置旋转:', CONFIG.model.porscheRotation);
+  
+  const loader = new GLTFLoader();
+  loader.load(CONFIG.model.porschePath, function(gltf) {
+    console.log('========== 保时捷911加载成功 ==========');
+    porscheModel = gltf.scene;
+    
+    const box = new THREE.Box3().setFromObject(porscheModel);
+    const size = box.getSize(new THREE.Vector3());
+    console.log('保时捷原始尺寸:', size.x, size.y, size.z);
+    
+    const scale = CONFIG.model.porscheScale;
+    console.log('应用缩放比例:', scale);
+    porscheModel.scale.set(scale, scale, scale);
+    
+    porscheModel.position.x = CONFIG.model.porschePosition.x;
+    porscheModel.position.y = CONFIG.model.porschePosition.y;
+    porscheModel.position.z = CONFIG.model.porschePosition.z;
+    console.log('保时捷位置:', porscheModel.position.x, porscheModel.position.y, porscheModel.position.z);
+    
+    porscheModel.rotation.x = CONFIG.model.porscheRotation.x;
+    porscheModel.rotation.y = CONFIG.model.porscheRotation.y;
+    porscheModel.rotation.z = CONFIG.model.porscheRotation.z;
+    console.log('保时捷旋转:', porscheModel.rotation.x, porscheModel.rotation.y, porscheModel.rotation.z);
+    
+    porscheModel.traverse(function(child) {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    
+    scene.add(porscheModel);
+    setupAnimations(gltf, porscheModel);
+    updateModelInfo();
+    onModelLoaded();
+    
+    console.log('========== 保时捷911加载完成 ==========');
+  }, function(xhr) {
+    console.log('保时捷加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
+  }, function(error) {
+    console.error('========== 保时捷911加载失败 ==========');
+    console.error('错误详情:', error);
+    showError('保时捷911加载失败: ' + error.message);
+    onModelLoaded();
+  });
+}
+
+function loadHelicopter() {
+  console.log('========== 阿帕奇直升机加载开始 ==========');
+  console.log('直升机配置路径:', CONFIG.model.helicopterPath);
+  console.log('直升机配置缩放:', CONFIG.model.helicopterScale);
+  console.log('直升机配置位置:', CONFIG.model.helicopterPosition);
+  console.log('直升机配置旋转:', CONFIG.model.helicopterRotation);
+  
+  const loader = new GLTFLoader();
+  loader.load(CONFIG.model.helicopterPath, function(gltf) {
+    console.log('========== 阿帕奇直升机加载成功 ==========');
+    helicopterModel = gltf.scene;
+    
+    const box = new THREE.Box3().setFromObject(helicopterModel);
+    const size = box.getSize(new THREE.Vector3());
+    console.log('直升机原始尺寸:', size.x, size.y, size.z);
+    
+    const scale = CONFIG.model.helicopterScale;
+    console.log('应用缩放比例:', scale);
+    helicopterModel.scale.set(scale, scale, scale);
+    
+    helicopterModel.position.x = CONFIG.model.helicopterPosition.x;
+    helicopterModel.position.y = CONFIG.model.helicopterPosition.y;
+    helicopterModel.position.z = CONFIG.model.helicopterPosition.z;
+    console.log('直升机位置:', helicopterModel.position.x, helicopterModel.position.y, helicopterModel.position.z);
+    
+    helicopterModel.rotation.x = CONFIG.model.helicopterRotation.x;
+    helicopterModel.rotation.y = CONFIG.model.helicopterRotation.y;
+    helicopterModel.rotation.z = CONFIG.model.helicopterRotation.z;
+    console.log('直升机旋转:', helicopterModel.rotation.x, helicopterModel.rotation.y, helicopterModel.rotation.z);
+    
+    helicopterModel.traverse(function(child) {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    
+    scene.add(helicopterModel);
+    setupAnimations(gltf, helicopterModel);
+    updateModelInfo();
+    onModelLoaded();
+    
+    console.log('========== 阿帕奇直升机加载完成 ==========');
+  }, function(xhr) {
+    console.log('直升机加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
+  }, function(error) {
+    console.error('========== 阿帕奇直升机加载失败 ==========');
+    console.error('错误详情:', error);
+    showError('阿帕奇直升机加载失败: ' + error.message);
     onModelLoaded();
   });
 }
@@ -383,6 +686,16 @@ function init() {
   console.log('开始加载场景模型');
   loadCharacter();
   console.log('开始加载人物模型');
+  loadCake();
+  console.log('开始加载生日蛋糕模型');
+  loadCar();
+  console.log('开始加载跑车模型');
+  loadCat();
+  console.log('开始加载猫咪模型');
+  loadPorsche();
+  console.log('开始加载保时捷911模型');
+  loadHelicopter();
+  console.log('开始加载阿帕奇直升机模型');
 }
 
 init();

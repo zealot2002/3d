@@ -32,7 +32,31 @@ export const CONFIG = {
     scenePath: 'models/fairy_yard.glb',  // 场景模型文件路径
     characterPath: 'models/pp1.fbx',     // 人物模型文件路径
     characterTargetHeight: 2,            // 人物缩放后的目标高度（单位：米）
-    characterPosition: { x: -2, y: 0, z: -1 }  // 人物在场景中的位置偏移
+    characterPosition: { x: -2, y: 0, z: -1 },  // 人物在场景中的位置偏移
+    
+    cakePath: 'models/birthday_cake.glb',     // 生日蛋糕模型文件路径
+    cakeScale: 1.0,                           // 蛋糕缩放倍数
+    cakePosition: { x: -2.5, y: 0.35, z: -3.6 },  // 蛋糕在长椅上的位置
+    
+    carPath: 'models/2018_toyota_gr_super_sport_concept.glb',  // 跑车模型文件路径
+    carScale: 1,                                                // 跑车缩放倍数
+    carPosition: { x: -8, y: 0.15, z: -2 },                     // 跑车在院子里的位置
+    carRotation: { x: 0, y: Math.PI, z: 0 },                    // 跑车旋转角度（绕Y轴转180度）
+    
+    catPath: 'models/sitting_catbritish_shorthair_blue_cat.glb',  // 猫咪模型文件路径
+    catScale: 0.5,                                                // 猫咪缩放倍数
+    catPosition: { x: -5, y: 0.05, z: -4.2 },                       // 猫咪在院子里的位置
+    catRotation: { x: 0, y: 0, z: 0 },                           // 猫咪旋转角度
+    
+    porschePath: 'models/free_porsche_911_carrera_4s.glb',  // 保时捷911模型文件路径
+    porscheScale: 1.0,                                       // 保时捷911缩放倍数
+    porschePosition: { x: 3.2, y: 0.65, z: -2 },              // 保时捷911在院子里的位置
+    porscheRotation: { x: 0, y: 0, z: 0 },        // 保时捷911旋转角度（45度）
+    
+    helicopterPath: 'models/boeing_ah-64d_apache_combat_helicopter.glb',  // 阿帕奇直升机模型文件路径
+    helicopterScale: 4.2,                                                  // 阿帕奇直升机缩放倍数
+    helicopterPosition: { x: 0, y: 6, z: -5 },                            // 阿帕奇直升机在空中的位置
+    helicopterRotation: { x: 0, y: Math.PI, z: 0 }                        // 阿帕奇直升机旋转角度
   },
 
   // ===== 渲染配置 =====
