@@ -16,6 +16,85 @@ let mixers = [];
 let clock = new THREE.Clock();
 let loadedCount = 0;
 
+// ===== 进度追踪系统 =====
+const MODEL_META = {
+  scene:      { name: '场景模型',     size: 9542041 },
+  character:  { name: '人物模型',     size: 31876710 },
+  cake:       { name: '生日蛋糕',     size: 1258291 },
+  car:        { name: '跑车模型',     size: 6606028 },
+  cat:        { name: '猫咪模型',     size: 6920601 },
+  porsche:    { name: '保时捷911',    size: 22124953 },
+  helicopter: { name: '阿帕奇直升机', size: 3565158 }
+};
+
+const progressState = {
+  models: {},       // {key: {loaded, total, done}}
+  totalModels: 7,
+  getTotalLoaded() {
+    return Object.values(this.models).reduce((s, m) => s + m.loaded, 0);
+  },
+  getTotalSize() {
+    return Object.values(this.models).reduce((s, m) => s + (m.total > 0 ? m.total : 0), 0);
+  },
+  getPercent() {
+    const size = this.getTotalSize();
+    if (size === 0) return 0;
+    return Math.min(99, Math.round(this.getTotalLoaded() / size * 100));
+  },
+  getDoneCount() {
+    return Object.values(this.models).filter(m => m.done).length;
+  }
+};
+
+function registerModelProgress(key) {
+  progressState.models[key] = {
+    loaded: 0,
+    total: MODEL_META[key].size,
+    done: false
+  };
+}
+
+function createProgressHandler(key) {
+  return function(xhr) {
+    const m = progressState.models[key];
+    if (!m) return;
+    if (xhr.total > 0) m.total = xhr.total;  // 用真实 Content-Length 覆盖估算值
+    m.loaded = xhr.loaded;
+    updateProgressUI(key);
+  };
+}
+
+function updateProgressUI(currentKey) {
+  const pct = progressState.getPercent();
+  const done = progressState.getDoneCount();
+  
+  const fill = document.getElementById('progress-fill');
+  const text = document.getElementById('progress-text');
+  const detail = document.getElementById('loading-detail');
+  const models = document.getElementById('loading-models');
+  
+  if (fill) fill.style.width = pct + '%';
+  if (text) text.textContent = pct + '%';
+  
+  if (currentKey && progressState.models[currentKey] && !progressState.models[currentKey].done) {
+    const m = progressState.models[currentKey];
+    const mbLoaded = (m.loaded / 1048576).toFixed(1);
+    const mbTotal = m.total > 0 ? (m.total / 1048576).toFixed(1) : '?';
+    if (detail) detail.textContent = '正在加载: ' + MODEL_META[currentKey].name + ' (' + mbLoaded + '/' + mbTotal + ' MB)';
+  }
+  
+  if (models) models.textContent = '已完成 ' + done + '/' + progressState.totalModels + ' 个模型';
+}
+
+function finishModelProgress(key) {
+  const m = progressState.models[key];
+  if (!m) return;
+  m.loaded = m.total;
+  m.done = true;
+  updateProgressUI(key);
+}
+// ===== 进度追踪系统结束 =====
+
 function showError(message) {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('error-msg').textContent = message;
@@ -133,13 +212,24 @@ function autoCenterCamera() {
   controls.update();
 }
 
-function onModelLoaded() {
+function onModelLoaded(key) {
   loadedCount++;
-  console.log('已加载模型数量:', loadedCount);
+  console.log('已加载模型数量:', loadedCount, '(' + MODEL_META[key].name + ')');
+  finishModelProgress(key);
   autoCenterCamera();
   
   if (loadedCount >= 7) {
-    hideLoading();
+    // 全部加载完成，短暂显示 100% 后隐藏
+    const fill = document.getElementById('progress-fill');
+    const text = document.getElementById('progress-text');
+    const detail = document.getElementById('loading-detail');
+    const models = document.getElementById('loading-models');
+    if (fill) fill.style.width = '100%';
+    if (text) text.textContent = '100%';
+    if (detail) detail.textContent = '加载完成！';
+    if (models) models.textContent = '全部 7 个模型已就绪';
+    
+    setTimeout(hideLoading, 400);
   } else {
     console.log('等待其他模型加载...');
   }
@@ -180,6 +270,8 @@ function setupFBXAnimations(modelObj) {
 
 function loadScene() {
   console.log('开始加载场景模型...');
+  const key = 'scene';
+  registerModelProgress(key);
   const loader = new GLTFLoader();
   loader.load(CONFIG.model.scenePath, function(gltf) {
     console.log('场景模型加载成功');
@@ -199,18 +291,18 @@ function loadScene() {
     scene.add(sceneModel);
     setupAnimations(gltf, sceneModel);
     updateModelInfo();
-    onModelLoaded();
-  }, function(xhr) {
-    console.log('场景加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
-  }, function(error) {
+    onModelLoaded(key);
+  }, createProgressHandler(key), function(error) {
     console.error('场景加载失败:', error);
     showError('场景加载失败: ' + error.message);
-    onModelLoaded();
+    onModelLoaded(key);
   });
 }
 
 function loadCharacter() {
   console.log('开始加载人物模型...');
+  const key = 'character';
+  registerModelProgress(key);
   const loader = new FBXLoader();
   const loadPath = CONFIG.model.characterUrl || CONFIG.model.characterPath;
   console.log('人物模型加载路径:', loadPath);
@@ -246,13 +338,11 @@ function loadCharacter() {
     scene.add(characterModel);
     setupFBXAnimations(characterModel);
     updateModelInfo();
-    onModelLoaded();
-  }, function(xhr) {
-    console.log('人物加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
-  }, function(error) {
+    onModelLoaded(key);
+  }, createProgressHandler(key), function(error) {
     console.error('人物加载失败:', error);
     showError('人物加载失败: ' + error.message);
-    onModelLoaded();
+    onModelLoaded(key);
   });
 }
 
@@ -262,6 +352,8 @@ function loadCake() {
   console.log('蛋糕配置缩放:', CONFIG.model.cakeScale);
   console.log('蛋糕配置位置:', CONFIG.model.cakePosition);
   
+  const key = 'cake';
+  registerModelProgress(key);
   const loader = new GLTFLoader();
   loader.load(CONFIG.model.cakePath, function(gltf) {
     console.log('========== 蛋糕加载成功 ==========');
@@ -306,17 +398,15 @@ function loadCake() {
     
     setupAnimations(gltf, cakeModel);
     updateModelInfo();
-    onModelLoaded();
+    onModelLoaded(key);
     
     console.log('========== 蛋糕加载完成 ==========');
-  }, function(xhr) {
-    console.log('蛋糕加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
-  }, function(error) {
+  }, createProgressHandler(key), function(error) {
     console.error('========== 蛋糕加载失败 ==========');
     console.error('错误详情:', error);
     console.error('错误信息:', error.message);
     showError('蛋糕加载失败: ' + error.message);
-    onModelLoaded();
+    onModelLoaded(key);
   });
 }
 
@@ -326,6 +416,8 @@ function loadCar() {
   console.log('跑车配置缩放:', CONFIG.model.carScale);
   console.log('跑车配置位置:', CONFIG.model.carPosition);
   
+  const key = 'car';
+  registerModelProgress(key);
   const loader = new GLTFLoader();
   loader.load(CONFIG.model.carPath, function(gltf) {
     console.log('========== 跑车加载成功 ==========');
@@ -364,17 +456,15 @@ function loadCar() {
     scene.add(carModel);
     setupAnimations(gltf, carModel);
     updateModelInfo();
-    onModelLoaded();
+    onModelLoaded(key);
     
     console.log('========== 跑车加载完成 ==========');
-  }, function(xhr) {
-    console.log('跑车加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
-  }, function(error) {
+  }, createProgressHandler(key), function(error) {
     console.error('========== 跑车加载失败 ==========');
     console.error('错误详情:', error);
     console.error('错误信息:', error.message);
     showError('跑车加载失败: ' + error.message);
-    onModelLoaded();
+    onModelLoaded(key);
   });
 }
 
@@ -385,6 +475,8 @@ function loadCat() {
   console.log('猫咪配置位置:', CONFIG.model.catPosition);
   console.log('猫咪配置旋转:', CONFIG.model.catRotation);
   
+  const key = 'cat';
+  registerModelProgress(key);
   const loader = new GLTFLoader();
   loader.load(CONFIG.model.catPath, function(gltf) {
     console.log('========== 猫咪加载成功 ==========');
@@ -428,17 +520,15 @@ function loadCat() {
     scene.add(catModel);
     setupAnimations(gltf, catModel);
     updateModelInfo();
-    onModelLoaded();
+    onModelLoaded(key);
     
     console.log('========== 猫咪加载完成 ==========');
-  }, function(xhr) {
-    console.log('猫咪加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
-  }, function(error) {
+  }, createProgressHandler(key), function(error) {
     console.error('========== 猫咪加载失败 ==========');
     console.error('错误详情:', error);
     console.error('错误信息:', error.message);
     showError('猫咪加载失败: ' + error.message);
-    onModelLoaded();
+    onModelLoaded(key);
   });
 }
 
@@ -449,6 +539,8 @@ function loadPorsche() {
   console.log('保时捷配置位置:', CONFIG.model.porschePosition);
   console.log('保时捷配置旋转:', CONFIG.model.porscheRotation);
   
+  const key = 'porsche';
+  registerModelProgress(key);
   const loader = new GLTFLoader();
   loader.load(CONFIG.model.porschePath, function(gltf) {
     console.log('========== 保时捷911加载成功 ==========');
@@ -482,16 +574,14 @@ function loadPorsche() {
     scene.add(porscheModel);
     setupAnimations(gltf, porscheModel);
     updateModelInfo();
-    onModelLoaded();
+    onModelLoaded(key);
     
     console.log('========== 保时捷911加载完成 ==========');
-  }, function(xhr) {
-    console.log('保时捷加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
-  }, function(error) {
+  }, createProgressHandler(key), function(error) {
     console.error('========== 保时捷911加载失败 ==========');
     console.error('错误详情:', error);
     showError('保时捷911加载失败: ' + error.message);
-    onModelLoaded();
+    onModelLoaded(key);
   });
 }
 
@@ -502,6 +592,8 @@ function loadHelicopter() {
   console.log('直升机配置位置:', CONFIG.model.helicopterPosition);
   console.log('直升机配置旋转:', CONFIG.model.helicopterRotation);
   
+  const key = 'helicopter';
+  registerModelProgress(key);
   const loader = new GLTFLoader();
   loader.load(CONFIG.model.helicopterPath, function(gltf) {
     console.log('========== 阿帕奇直升机加载成功 ==========');
@@ -535,16 +627,14 @@ function loadHelicopter() {
     scene.add(helicopterModel);
     setupAnimations(gltf, helicopterModel);
     updateModelInfo();
-    onModelLoaded();
+    onModelLoaded(key);
     
     console.log('========== 阿帕奇直升机加载完成 ==========');
-  }, function(xhr) {
-    console.log('直升机加载进度:', Math.round(xhr.loaded / xhr.total * 100) + '%');
-  }, function(error) {
+  }, createProgressHandler(key), function(error) {
     console.error('========== 阿帕奇直升机加载失败 ==========');
     console.error('错误详情:', error);
     showError('阿帕奇直升机加载失败: ' + error.message);
-    onModelLoaded();
+    onModelLoaded(key);
   });
 }
 

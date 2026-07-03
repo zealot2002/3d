@@ -19,9 +19,18 @@
     .info { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; color: rgba(255,255,255,0.5); font-size: 0.8rem; text-align: center; pointer-events: none; }
     .info span { display: block; margin-top: 3px; }
     #loading { position: fixed; inset: 0; background: #0a0a0f; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; }
-    .loader { width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.1); border-top-color: #4fc3f7; border-radius: 50%; animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #loading p { color: rgba(255,255,255,0.6); margin-top: 20px; font-size: 0.9rem; }
+    .loading-content { display: flex; flex-direction: column; align-items: center; max-width: 400px; width: 85%; }
+    .loader-icon { font-size: 3rem; margin-bottom: 16px; animation: bounce 1.2s ease-in-out infinite; }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    .loading-title { color: #fff; font-size: 1.1rem; font-weight: 600; margin-bottom: 24px; letter-spacing: 0.5px; }
+    .progress-container { display: flex; align-items: center; width: 100%; gap: 12px; margin-bottom: 12px; }
+    .progress-bar { flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; position: relative; }
+    .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #4fc3f7 0%, #66bb6a 50%, #ffd54f 100%); border-radius: 3px; transition: width 0.35s ease; position: relative; }
+    .progress-fill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%); animation: shimmer 2s ease-in-out infinite; }
+    @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+    .progress-text { color: rgba(255,255,255,0.7); font-size: 0.85rem; font-weight: 600; min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+    .loading-detail { color: rgba(255,255,255,0.45); font-size: 0.78rem; margin-bottom: 6px; text-align: center; min-height: 1.2em; }
+    .loading-models { color: rgba(255,255,255,0.35); font-size: 0.72rem; text-align: center; }
     .upload-box { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 300; }
     .upload-box.show { display: flex; }
     .upload-area { width: 300px; height: 200px; border: 2px dashed rgba(255,255,255,0.3); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s ease; }
@@ -47,8 +56,18 @@
 </head>
 <body>
   <div id="loading">
-    <div class="loader"></div>
-    <p>准备就绪...</p>
+    <div class="loading-content">
+      <div class="loader-icon">🎂</div>
+      <h2 class="loading-title">正在加载3D场景</h2>
+      <div class="progress-container">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <span class="progress-text" id="progress-text">0%</span>
+      </div>
+      <p class="loading-detail" id="loading-detail">准备中...</p>
+      <p class="loading-models" id="loading-models"></p>
+    </div>
   </div>
 
   <div id="error" class="error">
